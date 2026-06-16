@@ -47,3 +47,27 @@ class TestDataset(Dataset):
             mask_dir = gt_root / type_folder.name if type_folder.name != "good" else None
             for path in find_images(type_folder):
                 mask_path = None
+                if mask_dir is not None:
+                    stem = path.stem + "_mask"
+                    matches = list(mask_dir.glob(stem + ".*"))
+                    mask_path = matches[0] if matches else (mask_dir / (path.stem + ".png"))
+                self.samples.append((path, 1 if type_folder.name != "good" else 0, type_folder.name, mask_path))
+        self.t = make_transform(img_size)
+        self.img_size = img_size
+
+    def __len__(self):
+        return len(self.samples)
+
+    def __getitem__(self, i):
+        path, label, defect_type, mask_path = self.samples[i]
+        img = Image.open(path).convert("RGB")
+        mask = torch.zeros((1, self.img_size, self.img_size))
+        if mask_path is not None and mask_path.exists():
+            m = Image.open(mask_path).convert("L")
+            mask = transforms.functional.resize(transforms.functional.to_tensor(m), (self.img_size, self.img_size),
+                                                transforms.InterpolationMode.NEAREST).round()
+        return self.t(img), label, defect_type, mask
+
+
+class SupervisedDataset(Dataset):
+    """Classifier training set: train/good + test/good as negatives, chosen defect types as positives."""
