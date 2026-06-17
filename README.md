@@ -35,3 +35,41 @@ normal samples**, then evaluate whether it detects previously unseen defects.
 
 > See the master document `../../ai-projects-portfolio.md` for the shared
 > system architecture, the 9 mandatory ML-engineering requirements, and MLflow
+> experiment tracking guidance.
+
+---
+
+### How to Run Your Own Training on Kaggle
+
+#### Option 1: Standard Kaggle CLI
+
+1. Inside your project folder, create `kernel-metadata.json`:
+
+    ```json
+    {
+      "id": "khentitsafouaneamine/defect-detection-train",
+      "title": "defect detection train",
+      "code_file": "train.py",
+      "language": "python",
+      "kernel_type": "script",
+      "is_private": true,
+      "enable_gpu": true,
+      "enable_internet": true
+    }
+    ```
+
+2. Push and launch training:
+
+    ```bash
+    kaggle kernels push -p .
+    ```
+
+3. Check status:
+
+    ```bash
+    kaggle kernels status khentitsafouaneamine/defect-detection-train
+    ```
+
+4. Download trained checkpoints / outputs:
+
+    ```bash
