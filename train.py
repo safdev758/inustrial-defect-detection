@@ -23,3 +23,28 @@ def parse_args():
     p.add_argument("--classifier-epochs", type=int, default=8)
     p.add_argument("--img-size", type=int, default=256)
     p.add_argument("--batch-size", type=int, default=32)
+    p.add_argument("--seed", type=int, default=42)
+    return p.parse_args()
+
+
+def detect_data_root(arg_root):
+    if arg_root:
+        return Path(arg_root)
+    input_dir = Path("/kaggle/input")
+    if input_dir.exists():
+        print(f"[ENV] mounted inputs: {sorted(str(p) for p in input_dir.iterdir())}")
+        for base in sorted(input_dir.iterdir()):
+            for cand in [base, *sorted(base.iterdir())]:
+                if not cand.is_dir():
+                    continue
+                for c in [cand, *sorted(cand.iterdir())]:
+                    if c.is_dir() and (c / "hazelnut" / "train" / "good").exists():
+                        return c
+        seen = []
+        for base in sorted(input_dir.rglob("*")):
+            if len(base.parts) <= len(input_dir.parts) + 4:
+                seen.append(str(base))
+        print("input tree:", "\n".join(seen))
+    raise SystemExit("No MVTec AD root found. Pass --data-root.")
+
+
