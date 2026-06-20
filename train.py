@@ -70,3 +70,30 @@ def main():
     metrics = {"meta": vars(args) | {"data_root": str(data_root), "device": device}}
     for category in args.categories:
         print(f"\n{'=' * 60}\n🚂 category: {category}\n{'=' * 60}")
+        ae = train_autoencoder(
+            data_root / category, epochs=args.epochs, img_size=args.img_size,
+            batch_size=args.batch_size, device=device, log=print,
+        )
+        torch.save(ae.state_dict(), ckpt_dir / f"autoencoder_{category}.pth")
+        metrics.setdefault("autoencoder", {})[category] = evaluate_autoencoder(
+            ae, data_root / category, img_size=args.img_size, device=device, output_dir=output_dir, log=print,
+        )
+        torch.save(metrics, "output/metrics_partial.json")
+
+        if args.phase == "severity":
+            ae = train_autoencoder(
+                data_root / category, epochs=args.epochs, img_size=args.img_size,
+                batch_size=args.batch_size, device=device, log=print,
+            )
+            torch.save(ae.state_dict(), ckpt_dir / f"autoencoder_{category}.pth")
+            from src.severity import evaluate_severity
+            metrics.setdefault("severity", {})[category] = evaluate_severity(
+                ae, data_root / category, img_size=args.img_size, batch_size=args.batch_size, device=device, log=print,
+            )
+            torch.save(metrics, "output/metrics_partial.json")
+            continue
+
+        if args.phase == "patchcore":
+            pc = train_patchcore(
+                data_root / category, img_size=224, batch_size=args.batch_size, device=device, log=print,
+            )
