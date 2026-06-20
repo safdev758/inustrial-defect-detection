@@ -97,3 +97,30 @@ def main():
             pc = train_patchcore(
                 data_root / category, img_size=224, batch_size=args.batch_size, device=device, log=print,
             )
+            metrics.setdefault("patchcore", {})[category] = evaluate_patchcore(
+                pc, data_root / category, img_size=224, batch_size=args.batch_size, device=device, log=print,
+            )
+            torch.save(metrics, "output/metrics_partial.json")
+            continue
+
+        if args.phase == "both":
+            seen, novel = split_seen_unseen(data_root / category)
+            print(f"[CLF] seen types: {seen} | novel types: {novel}")
+            clf = train_classifier(
+                data_root / category, seen, epochs=args.classifier_epochs,
+                img_size=args.img_size, batch_size=args.batch_size, device=device, log=print,
+            )
+            torch.save(clf.state_dict(), ckpt_dir / f"classifier_{category}.pth")
+            metrics.setdefault("classifier", {})[category] = evaluate_classifier(
+                clf, data_root / category, novel, img_size=args.img_size, device=device, log=print,
+            )
+            torch.save(metrics, "output/metrics_partial.json")
+
+    (output_dir / "metrics.json").write_text(json.dumps(metrics, indent=2))
+    print("\n📌 FINAL METRICS:")
+    print(json.dumps(metrics, indent=2))
+    print("\n🏁 PIPELINE COMPLETE")
+
+
+if __name__ == "__main__":
+    main()
