@@ -48,3 +48,25 @@ def detect_data_root(arg_root):
     raise SystemExit("No MVTec AD root found. Pass --data-root.")
 
 
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+
+
+def main():
+    args = parse_args()
+    set_seed(args.seed)
+    data_root = detect_data_root(args.data_root)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"[ENV] device={device} data_root={data_root} categories={args.categories} phase={args.phase}")
+
+    output_dir = Path("output")
+    ckpt_dir = Path("checkpoints")
+    output_dir.mkdir(exist_ok=True)
+    ckpt_dir.mkdir(exist_ok=True)
+
+    metrics = {"meta": vars(args) | {"data_root": str(data_root), "device": device}}
+    for category in args.categories:
+        print(f"\n{'=' * 60}\n🚂 category: {category}\n{'=' * 60}")
