@@ -1,0 +1,58 @@
+{
+  "meta": {
+    "data_root": "/kaggle/input/datasets/ipythonx/mvtec-ad",
+    "categories": [
+      "hazelnut"
+    ],
+    "phase": "both",
+    "epochs": 30,
+    "classifier_epochs": 8,
+    "img_size": 256,
+    "batch_size": 32,
+    "seed": 42,
+    "device": "cuda"
+  },
+  "autoencoder": {
+    "hazelnut": {
+      "image_auroc": 0.9543,
+      "pixel_auroc": 0.9416,
+      "best_threshold": 0.2317,
+      "best_confusion_matrix": {
+        "tp": 61,
+        "fp": 2,
+        "tn": 38,
+        "fn": 9
+      },
+      "per_defect_type": {
+        "crack": {
+          "auroc": 0.9181,
+          "n": 18,
+          "mean_epix": 0.28839
+        },
+        "cut": {
+          "auroc": 0.9456,
+          "n": 17,
+          "mean_epix": 0.26902
+        },
+        "hole": {
+          "auroc": 0.9556,
+          "n": 18,
+          "mean_epix": 0.31241
+        },
+        "print": {
+          "auroc": 1.0,
+          "n": 17,
+          "mean_epix": 0.5477
+        }
+      },
+      "good_mean_epix": 0.17178
+    }
+  },
+  "classifier": {
+    "hazelnut": {
+      "auroc_all": 1.0,
+      "auroc_seen_defects": 1.0,
+      "auroc_novel_defects": 1.0
+    }
+  }
+}

@@ -73,3 +73,69 @@ normal samples**, then evaluate whether it detects previously unseen defects.
 4. Download trained checkpoints / outputs:
 
     ```bash
+    kaggle kernels output khentitsafouaneamine/defect-detection-train -p ./output
+    ```
+
+#### Option 2: The Multi-File Project Bundler (`kaggle_runner.py`)
+
+Because Kaggle's API normally only uploads a single script, `kaggle_runner.py`
+automatically packages whole project directories (`src/`, `models/`,
+`requirements.txt`) and launches them:
+
+```bash
+# Bundle your whole project, enable GPU, watch progress, and auto-download results:
+python3 kaggle_runner.py bundle --src ./01-industrial-defect-detection \
+    --entry train.py --slug defect-detection-train --watch
+```
+
+> Move this folder's contents into `projects/01-industrial-defect-detection/`
+> and run the bundle command from `projects/` (the parent), since the runner
+> walks the source directory you point it at.
+
+---
+
+### Production serving (L10–L12): API + Docker + MLflow
+
+The training stack and the serving stack are split on purpose — the API serves
+`checkpoints/*.pth` (Kaggle artifacts, copied to `checkpoints/`) and
+`deployments/app_metrics.json` (the Youden threshold from the run).
+
+```bash
+# 1. Quick sanity check with pytest (needs local torch):
+python3 -m pytest tests/test_api.py -q
+
+# 2. Serve locally without Docker:
+cp output/train/checkpoints/*.pth checkpoints/   # pull from Kaggle first
+uvicorn src.api:app --port 8000                  # then POST /inspect
+
+# 3. Serve in Docker (CPU-only torch, ~1.5GB image):
+docker build -t defect-inspection-api:1.0 .
+docker run -d --name defect-api -p 8000:8000 defect-inspection-api:1.0
+curl localhost:8000/health
+curl -X POST localhost:8000/inspect -F "file=@image.png"
+
+# 4. Log a pulled training run to MLflow:
+python3 src/mlflow_log.py --project defect-detection \
+    --kernel khentitsafouaneamine/defect-detection-train \
+    --metrics output/train/output/metrics.json
+```
+
+Endpoints:
+- `GET /health` → category + anomaly threshold
+- `POST /inspect` (`multipart image`) → `decision` (ANOMALY/OK), `anomaly_score`,
+  `threshold`, `margin`, plus classifier verdict restricted to seen defect types
+  (`crack`, `cut`) or marker `unseen_type` for anything else.
+
+### L13 — PatchCore memory bank (`src/patchcore.py`)
+
+Frozen ImageNet ResNet18 feature extractor (layer1+layer2 concat, 192-d patch
+embeddings) → memory bank of train/good patches → greedy k-center coreset
+(~10%) → b-score nearest-neighbor scoring (Roth et al. 2022). Run with
+`--phase patchcore` (no training loop: the "training" is building the bank).
+
+Kernel results on hazelnut (vs the autoencoder baseline of L8):
+
+| model | image AUROC | pixel AUROC |
+| --- | --- | --- |
+| ConvAutoencoder (L8) | 0.9543 | 0.9416 |
+| **PatchCore (L13)** | **0.9625** | **0.9827** |

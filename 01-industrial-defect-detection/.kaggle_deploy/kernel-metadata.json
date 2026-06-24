@@ -1,0 +1,17 @@
+{
+  "id": "khentitsafouaneamine/defect-detection-smoke",
+  "title": "defect detection smoke",
+  "code_file": "runner.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "dataset_sources": [
+    "ipythonx/mvtec-ad"
+  ],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}

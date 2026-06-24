@@ -1,0 +1,10 @@
+*.pth
+*.pyc
+__pycache__/
+.ipynb_checkpoints/
+output/
+data/
+notebooks/
+tests/
+*.md
+.git
