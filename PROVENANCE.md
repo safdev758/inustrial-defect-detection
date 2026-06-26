@@ -1,0 +1,21 @@
+# Provenance — every artifact traces to a real run
+
+## Kaggle kernels (account khentitsafouaneamine)
+
+| kernel | purpose | key outputs |
+| --- | --- | --- |
+| `defect-detection-smoke` | bundler smoke test | green exit, moved into `output/smoke_full` |
+| `defect-detection-train` | full unsupervised→classifier training (autoencoder image/task partisan + binary classifier) | image AUROC 0.9543, pixel AUROC 0.9416, threshold 0.2317 (Youden), `output/train/output/metrics.json` |
+| `defect-detection-patchcore` | L13 PatchCore memory bank | image 0.9625 / pixel 0.9827, `output/patchcore/output/metrics.json` |
+| `defect-detection-patchcore` v2 | per-defect-type breakdown | crack 0.9417 / cut 0.9382 / hole 0.9847 / print 0.9853 |
+| `defect-detection-l10-severity` | L10 severity scoring | tau 0.2579, IoU 0.28, grades-per-table in README |
+
+Logs pulled next to the metric files: `output/<name>/defect-detection-*.log`.
+
+## Docker
+
+- `defect-inspection-api:1.0` (1.52GB, CPU-only torch wheel) — serves
+  `checkpoints/autoencoder_hazelnut.pth` + `classifier_hazelnut.pth`
+- live-tested: `/health`, `/inspect` (returns decision + anomaly_score +
+  classifier verdict + unseen_type marker)
+
