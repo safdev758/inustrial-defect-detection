@@ -139,3 +139,22 @@ Kernel results on hazelnut (vs the autoencoder baseline of L8):
 | --- | --- | --- |
 | ConvAutoencoder (L8) | 0.9543 | 0.9416 |
 | **PatchCore (L13)** | **0.9625** | **0.9827** |
+
+Teaching punchline: no gradient descent at all — the defects are simply "far
+from every normal patch", and the coreset makes the distance search cheap.
+
+### L13b — PatchCore per-type breakdown (kernel v2)
+
+`evaluate_patchcore` now reports per-defect-type image AUROC (each type scored
+against the good samples only, `per_type_image_auroc`, log lines
+`[PATCHCORE-EVAL] <type>`). Hazelnut v2 (`output/patchcore_per_type`):
+
+| defect type | image AUROC | n_defect |
+| --- | --- | --- |
+| crack | 0.9417 | 18 |
+| cut | 0.9382 | 17 |
+| hole | 0.9847 | 18 |
+| print | 0.9853 | 17 |
+
+Reading: bulk anomalies (hole areas, print patches) sit far from every coreset
+patch → AUROC ≈ 0.98+; thin/linear anomalies (crack, cut) touch few patches, so
