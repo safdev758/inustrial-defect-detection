@@ -158,3 +158,32 @@ against the good samples only, `per_type_image_auroc`, log lines
 
 Reading: bulk anomalies (hole areas, print patches) sit far from every coreset
 patch → AUROC ≈ 0.98+; thin/linear anomalies (crack, cut) touch few patches, so
+the max-patch b-score upload separates them from good images less reliably.
+Aggregate image AUROC (0.9625) is a *weighted* blend of these — always ask for
+the per-type table before shipping. (n_defect reflects the kernel's data mount,
+not the full MVTec test partition — relative ordering is what matters here.)
+
+### L10 — Severity scoring (`src/severity.py`, kernel `defect-detection-l10-severity` v2)
+
+AE reconstruction error map → min-max normalized → threshold `tau` = good-mean
++ 3×MAD (fitted on train/good only) → max-pool dilation (k=5, it=2) + erosion →
+estimated mask → `intensity` = mean normalized error inside the estimate →
+`grade` bands LOW<0.35? MEDIUM<0.60? CRITICAL (see `BANDS`). Reported against
+ground truth: `area_mae_pct` and `mask_iou`, plus `good_false_area_pct` as the
+calibration probe.
+
+Hazelnut v2: tau=0.2579, area-MAE 7.16%, mask-IoU 0.28:
+| type | grades |
+| --- | --- |
+| good | claims 26.63% of image (false-area probe) |
+| crack | MEDIUM 100% |
+| cut | LOW 65% / MEDIUM 35% |
+| hole | LOW 22% / MEDIUM 78% |
+| print | MEDIUM 94% / HIGH 6% |
+
+Teaching punchline: grading is *calibration* work, not detection work —
+detection is solved here; the remaining error is all in (1) max-normalization
+inflating noise on defect-free frames (26.6% false area) and (2) thin defects
+(CRACK's thin line) masquerading as MEDIUM severity. Both have the same fix
+family: robust normalization (per-image percentile instead of max) + band
+re-fit on the real `good` distribution.
