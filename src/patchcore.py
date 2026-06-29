@@ -80,3 +80,39 @@ def evaluate_patchcore(model, category_root: Path, img_size: int = 224, device: 
     from sklearn.metrics import roc_auc_score
 
     net, bank = model["net"], model["bank"]
+    ds = TestDataset(category_root, img_size)
+    loader = DataLoader(ds, batch_size=batch_size, shuffle=False)
+    image_scores, image_labels, dts_all, pixel_scores, pixel_labels = [], [], [], [], []
+    for imgs, labels, dts, masks in loader:
+        fmap = _embed_batch(net, imgs, device)
+        B, C, H, W = fmap.shape
+        patches = fmap.permute(0, 2, 3, 1).reshape(B * H * W, C)
+        d2 = torch.cdist(patches, bank) ** 2
+        b_scores = (d2.min(dim=1).values - 1.0).clamp_min(1e-8).sqrt()
+        patch_map = b_scores.view(B, H, W).cpu().unsqueeze(1)
+        up = F.interpolate(patch_map, size=imgs.shape[2], mode="bilinear").squeeze(1)
+        for i in range(B):
+            image_scores.append(float(b_scores[i * W * H:(i + 1) * W * H].max()))
+            image_labels.append(int(labels[i]))
+            dts_all.append(dts[i])
+            pixel_scores.append(up[i].flatten())
+            pixel_labels.append(masks[i].flatten() > 0)
+    image_auroc = roc_auc_score(image_labels, image_scores)
+    flat_p = np.concatenate([p.numpy() for p in pixel_scores])
+    flat_l = np.concatenate([l.numpy().astype(int) for l in pixel_labels])
+    pixel_auroc = roc_auc_score(flat_l, flat_p) if flat_l.any() else None
+    log(f"[PATCHCORE-EVAL] image AUROC={image_auroc:.4f} "
+        f"pixel AUROC={'n/a' if pixel_auroc is None else round(pixel_auroc, 4)}")
+    def _safe_auroc(labels_, scores_):
+        if len(set(labels_)) < 2:
+            return None
+        return round(roc_auc_score(labels_, scores_), 4)
+    good_scores = [s for s, d in zip(image_scores, dts_all) if d == "good"]
+    per_type = {}
+    for dt in sorted(set(dts_all) - {"good"}):
+        dt_scores = [s for s, d in zip(image_scores, dts_all) if d == dt]
+        per_type[dt] = _safe_auroc([0] * len(good_scores) + [1] * len(dt_scores), good_scores + dt_scores)
+        log(f"[PATCHCORE-EVAL] {dt}: AUROC={per_type[dt]} n_defect={len(dt_scores)}")
+    return {"image_auroc": round(image_auroc, 4),
+            "pixel_auroc": None if pixel_auroc is None else round(pixel_auroc, 4),
+            "per_type_image_auroc": per_type}

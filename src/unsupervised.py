@@ -70,3 +70,34 @@ def evaluate_autoencoder(model, category_root, img_size=256, device="cuda", outp
         e = np.array(e_list)
         scores = np.concatenate([e, np.array(good_errs)])
         labels = np.concatenate([np.ones(len(e)), np.zeros(len(good_errs))])
+        result["per_defect_type"][t] = {"auroc": round(roc_auc_score(labels, scores), 4),
+                                        "n": int(len(e)), "mean_epix": round(float(e.mean()), 5)}
+    result["good_mean_epix"] = round(float(np.mean(good_errs)), 5) if good_errs else None
+    if output_dir is not None:
+        plot_curves(fpr, tpr, image_auroc, pixel_auroc, output_dir)
+    log(f"[EVAL] image AUROC={image_auroc:.4f}  pixel AUROC={pixel_auroc:.4f}  threshold={threshold:.5f}  confusion={confusion}")
+    return result
+
+
+def evaluate_threshold(scores, labels, threshold):
+    pred = (np.asarray(scores) >= threshold).astype(int)
+    labels = np.asarray(labels)
+    tp = int(((pred == 1) & (labels == 1)).sum())
+    fp = int(((pred == 1) & (labels == 0)).sum())
+    tn = int(((pred == 0) & (labels == 0)).sum())
+    fn = int(((pred == 0) & (labels == 1)).sum())
+    return {"tp": tp, "fp": fp, "tn": tn, "fn": fn}
+
+
+def plot_curves(fpr, tpr, image_auroc, pixel_auroc, output_dir):
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(figsize=(5, 5))
+    ax.plot(fpr, tpr, label=f"image AUROC={image_auroc:.3f}")
+    ax.plot([0, 1], "k--")
+    ax.set(xlabel="FPR", ylabel="TPR", title="Anomaly detection ROC")
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(output_dir / "roc_curve.png", dpi=150)
+    plt.close(fig)

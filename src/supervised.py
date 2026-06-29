@@ -39,3 +39,22 @@ def evaluate_classifier(model, category_root, novel_types, img_size=256, device=
     loader = DataLoader(test, batch_size=16, shuffle=False, num_workers=2, pin_memory=True)
     model.eval()
     scores, labels, types = [], [], []
+    with torch.no_grad():
+        for batch, label, t, _ in loader:
+            probs = torch.softmax(model(batch.to(device)), dim=1)[:, 1]
+            scores += probs.cpu().tolist()
+            labels += label.tolist()
+            types += list(t)
+    scores, labels = np.array(scores), np.array(labels)
+    types = np.array(types)
+    masked = ~np.isin(types, novel_types)
+    seen_mask = (masked & (labels == 1)) | (labels == 0)
+    novel_mask = np.isin(types, novel_types)
+    novel_vs_good = novel_mask | (labels == 0)
+    result = {
+        "auroc_all": round(roc_auc_score(labels, scores), 4),
+        "auroc_seen_defects": round(roc_auc_score(labels[seen_mask], scores[seen_mask]), 4),
+        "auroc_novel_defects": round(roc_auc_score(labels[novel_vs_good], scores[novel_vs_good]), 4),
+    }
+    log(f"[CLF-EVAL] {result}")
+    return result

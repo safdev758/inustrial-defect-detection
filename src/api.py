@@ -66,3 +66,29 @@ def create_app():
     def inspect(file: UploadFile = File(...)):
         if state.get("threshold") is None:
             raise HTTPException(status_code=503, detail="No metrics.json — run the training kernel first and pull output/")
+        try:
+            tensor = load_image(file).unsqueeze(0).to(state["device"])
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid image file")
+        with torch.no_grad():
+            recon = state["ae"](tensor)
+            score = float((recon - tensor).abs().amax())
+            if score >= state["threshold"]:
+                probs = torch.softmax(state["clf"](tensor), dim=1)[0]
+                defect = SEEN_TYPES[int(probs.argmax())] if probs.max() > 0.5 else "unseen_type"
+                verdict = {"label": defect, "probs": {t: round(float(p), 4) for t, p in zip(SEEN_TYPES, probs)}}
+            else:
+                verdict = {"label": "normal", "probs": {}}
+        margin = round(score - state["threshold"], 5)
+        return InspectResponse(
+            decision="ANOMALY" if margin >= 0 else "OK",
+            anomaly_score=round(score, 5),
+            threshold=round(state["threshold"], 5),
+            margin=margin,
+            classifier=verdict,
+        )
+
+    return app
+
+
+app = create_app()
